@@ -10,7 +10,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text(encoding='utf-8')
 
 setup(
-    name="marcel-location-simulator",
+    name="iphone-location-simulator",
     version="1.0.0",
     author="Marcel Afsar",
     author_email="marcel.afsar@icloud.com",
@@ -53,7 +53,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "marcel-location-simulator=src.main:main",
+            "iphone-location-simulator=src.main:main",
         ],
     },
     include_package_data=True,

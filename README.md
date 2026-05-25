@@ -54,7 +54,7 @@ pip install -r requirements.txt
 1. Press the **Windows Key**, type **PowerShell** or **Command Prompt**, right-click, and select **Run as Administrator**.
 2. Navigate to the project directory:
    ```cmd
-   cd "C:\path\to\marcel-location-simulator"
+   cd "C:\path\to\iphone-location-simulator"
    ```
 3. Launch the simulator:
    ```cmd
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 1. Open your **Terminal** app.
 2. Navigate to the project directory:
    ```bash
-   cd "/path/to/marcel-location-simulator"
+   cd "/path/to/iphone-location-simulator"
    ```
 3. Launch the simulator with administrative access (required for network interfaces and raw socket configurations):
    ```bash
@@ -76,7 +76,7 @@ pip install -r requirements.txt
 1. Open your **Terminal**.
 2. Navigate to the project directory:
    ```bash
-   cd "/path/to/marcel-location-simulator"
+   cd "/path/to/iphone-location-simulator"
    ```
 3. Launch the simulator with root access:
    ```bash
