@@ -1,0 +1,329 @@
+/* 
+   Marcel Location Simulator - Deep Space Premium UI
+   Rebranded Production Design
+*/
+
+/* ============================================
+   GLOBAL
+   ============================================ */
+QMainWindow {
+    background-color: #0B0F19;
+}
+
+QWidget {
+    color: #F8FAFC;
+    font-family: 'Inter', '-apple-system', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 13px;
+}
+
+QFrame {
+    border: none;
+}
+
+/* ============================================
+   FLOATING PANELS (GroupBoxes)
+   ============================================ */
+QGroupBox {
+    background-color: rgba(21, 27, 40, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    margin-top: 18px;
+    padding: 16px 14px 14px 14px;
+    font-weight: 600;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 4px 14px;
+    color: #3B82F6;
+    font-size: 13px;
+    left: 12px;
+    background-color: #1A2131;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ============================================
+   DEVICE BAR
+   ============================================ */
+QWidget#device_bar {
+    background-color: rgba(21, 27, 40, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+}
+
+QLabel#device_status_label {
+    font-weight: bold;
+    padding: 4px 8px;
+    font-size: 13px;
+    border: none;
+    background: transparent;
+}
+
+QLabel#battery_label {
+    border: none;
+    color: #94A3B8;
+    background: transparent;
+}
+
+/* ============================================
+   INPUTS
+   ============================================ */
+QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox {
+    background-color: rgba(13, 17, 26, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: #F8FAFC;
+    selection-background-color: #3B82F6;
+    font-size: 13px;
+}
+
+QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus {
+    border: 1px solid #3B82F6;
+    background-color: rgba(17, 24, 39, 0.9);
+}
+
+QLineEdit::placeholder {
+    color: #64748B;
+}
+
+QDoubleSpinBox::up-button, QSpinBox::up-button,
+QDoubleSpinBox::down-button, QSpinBox::down-button {
+    width: 0px;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+QPushButton {
+    background-color: #3B82F6;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 18px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+}
+
+QPushButton:hover {
+    background-color: #60A5FA;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+QPushButton:pressed {
+    background-color: #2563EB;
+}
+
+QPushButton:disabled {
+    background-color: rgba(21, 27, 40, 0.5);
+    color: #64748B;
+    border: 1px solid rgba(255,255,255,0.02);
+}
+
+/* Specific button styles */
+QPushButton#stop_btn { background-color: rgba(239, 68, 68, 0.9); }
+QPushButton#stop_btn:hover { background-color: #F87171; }
+
+QPushButton#clear_btn { background-color: rgba(245, 158, 11, 0.9); }
+QPushButton#clear_btn:hover { background-color: #FBBF24; }
+
+QPushButton#walk_btn { background-color: rgba(16, 185, 129, 0.9); }
+QPushButton#walk_btn:hover { background-color: #34D399; }
+
+QPushButton#teleport_btn { background-color: rgba(139, 92, 246, 0.9); }
+QPushButton#teleport_btn:hover { background-color: #A78BFA; }
+
+QPushButton#toggle_menu_btn {
+    background-color: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    color: #F8FAFC;
+    font-weight: bold;
+}
+QPushButton#toggle_menu_btn:hover {
+    background-color: rgba(51, 65, 85, 0.9);
+}
+
+/* ============================================
+   CHECKBOX
+   ============================================ */
+QCheckBox {
+    spacing: 10px;
+    font-size: 12px;
+    color: #CBD5E1;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(13, 17, 26, 0.7);
+}
+
+QCheckBox::indicator:checked {
+    background-color: #10B981;
+    border-color: #10B981;
+    image: url(''); /* PyQt uses a default checkmark if not specified, but changing background is enough */
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+QStatusBar {
+    background-color: rgba(11, 15, 25, 0.95);
+    color: #94A3B8;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 12px;
+    padding: 4px 10px;
+}
+QStatusBar::item { border: none; }
+
+/* ============================================
+   SLIDER
+   ============================================ */
+QSlider::groove:horizontal {
+    border: none;
+    height: 6px;
+    background: rgba(13, 17, 26, 0.8);
+    margin: 2px 0;
+    border-radius: 3px;
+}
+QSlider::sub-page:horizontal {
+    background: #3B82F6;
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    background: #ffffff;
+    border: 2px solid #3B82F6;
+    width: 16px;
+    height: 16px;
+    margin: -5px 0;
+    border-radius: 9px;
+}
+QSlider::handle:horizontal:hover {
+    background: #EFF6FF;
+    border-color: #60A5FA;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 8px;
+    margin: 0px 2px 0px 0px;
+}
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.1);
+    min-height: 30px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+/* ============================================
+   COMBOBOX DROPDOWN
+   ============================================ */
+QComboBox QAbstractItemView {
+    background-color: #1A2131;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    selection-background-color: #3B82F6;
+    color: #F8FAFC;
+    outline: none;
+    border-radius: 8px;
+    padding: 6px;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 28px;
+}
+
+/* ============================================
+   LABELS & TOOLTIPS
+   ============================================ */
+QLabel {
+    border: none;
+    background: transparent;
+}
+QToolTip {
+    background-color: #1A2131;
+    color: #F8FAFC;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+/* ============================================
+   MESSAGE BOX
+   ============================================ */
+QMessageBox {
+    background-color: #1A2131;
+}
+QMessageBox QLabel {
+    color: #F8FAFC;
+    font-size: 13px;
+}
+QMessageBox QPushButton {
+    min-width: 90px;
+    padding: 8px 24px;
+}
+
+/* ============================================
+   GPS HUD CARD & FLOATING CONTROLS
+   ============================================ */
+QWidget#gps_hud_card {
+    background-color: rgba(21, 27, 40, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+}
+
+QLabel#gps_hud_header {
+    color: #3B82F6;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+QLabel#gps_hud_time {
+    color: #F8FAFC;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+QLabel#gps_hud_details {
+    color: #94A3B8;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QPushButton#focus_btn, QPushButton#track_btn {
+    background-color: rgba(21, 27, 40, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    color: #F8FAFC;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 0 12px;
+}
+
+QPushButton#focus_btn:hover, QPushButton#track_btn:hover {
+    background-color: #1E293B;
+    border-color: #3B82F6;
+}
+
+QPushButton#track_btn:checked {
+    background-color: rgba(59, 130, 246, 0.15);
+    border-color: #3B82F6;
+    color: #3B82F6;
+}
