@@ -134,13 +134,22 @@ To simulate moving realistically along a road between two distant coordinates:
 - **🎯 Focus Location Button:** Panned away to examine another area on the map and lost your pointer? Click the floating **🎯 Focus** button in the bottom-right corner to instantly center the map camera back to your active spoofed coordinate.
 - **🔒 Track Dot Toggle:** Toggle the floating **🔒 Track** button to lock the map camera onto your travel marker. When enabled, the map automatically centers itself as your position travels along the road. Disable it if you want to freely pan around the map during active drives.
 - **🚗 Industrial-Grade Stability (Zero-Freeze Engine):** Refactored the core subprocess engine to pipe background location feeds straight to `DEVNULL`. This prevents Windows OS stream pipe blockages, allowing you to run multi-hour long cross-country routes with flawless coordinate synchronization and zero lags/freezes.
+- **❄️ Location Freezing (Safe Unplug):** Freeze your simulated GPS coordinates instantly onto the iPhone. Once frozen, you can safely unplug your device's USB cable; the simulated location remains persistent on the device without reverting to your actual location until you reconnect and click **Unfreeze GPS** or reboot the phone.
 
 #### D. Fine-grained WASD Joystick Controls
 - While connected, ensure the main window has focus.
 - Use your keyboard's **WASD** keys or **Arrow** keys to move your iPhone's location step-by-step.
 - The size of each coordinate step scales dynamically with the **Speed** slider setting.
 
-#### E. Managing Saved Favorites
+#### E. Location Freezing (Safe Unplug)
+Need to take your spoofed phone on the go without keeping it tethered to your computer?
+1. Teleport or simulate a route to your desired location.
+2. Click the **❄️ Freeze Location** button on the Control Panel.
+3. Once frozen, the status indicator turns blue: `❄️ [Phone Name] (Location Frozen)`. A confirmation pop-up will notify you that it is safe to unplug.
+4. Unplug the USB cable safely. Your iPhone's GPS coordinates will remain permanently locked in place.
+5. To restore your true location: plug the iPhone back in, wait for the app to detect the device, and click **🔓 Unfreeze GPS** (or simply restart your iPhone).
+
+#### F. Managing Saved Favorites
 - Access the **Saved Favorites** menu to open the English catalog dialog.
 - You can add custom coordinates, categorize them under custom tags (e.g., "Work", "Parks", "Hotspots"), search entries by name, or delete old records.
 - Double-click any entry in your favorites table to instantly teleport to that location.

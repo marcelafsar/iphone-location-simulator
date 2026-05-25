@@ -62,6 +62,45 @@ class WalkSimulationThread(QThread):
             self.error.emit(str(e))
 
 
+class RoamSimulationThread(QThread):
+    """Runs area roam simulation in a background thread"""
+    
+    progress_updated = pyqtSignal(float, float, float)  # lat, lon, progress
+    route_calculated = pyqtSignal(float, float)  # total_dist, total_time
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    
+    def __init__(self, location_controller, center_lat, center_lon, radius_m, duration_mins, speed, transport_mode):
+        super().__init__()
+        self.location_controller = location_controller
+        self.center_lat = center_lat
+        self.center_lon = center_lon
+        self.radius_m = radius_m
+        self.duration_mins = duration_mins
+        self.speed = speed
+        self.transport_mode = transport_mode
+
+    def run(self):
+        try:
+            success = self.location_controller.simulate_roam(
+                self.center_lat,
+                self.center_lon,
+                self.radius_m,
+                self.duration_mins,
+                self.speed,
+                1.0,
+                self.progress_updated.emit,
+                self.transport_mode,
+                self.route_calculated.emit
+            )
+            if success:
+                self.finished.emit()
+            else:
+                self.error.emit("Roam simulation was interrupted")
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class MainWindow(QMainWindow):
     """Main application window"""
     
@@ -167,6 +206,8 @@ class MainWindow(QMainWindow):
         self.control_panel.clear_requested.connect(self._on_clear)
         self.control_panel.freeze_requested.connect(self._on_freeze_location)
         self.control_panel.joystick_step_requested.connect(self._on_joystick_step)
+        self.control_panel.roam_requested.connect(self._on_roam_requested)
+        self.control_panel.roam_radius_changed.connect(self._on_roam_radius_changed)
         self.map_widget.location_clicked.connect(self._on_map_clicked)
         self.map_widget.destination_clicked.connect(self._on_map_destination_clicked)
         
@@ -487,6 +528,36 @@ class MainWindow(QMainWindow):
         self.statusBar.showMessage(f"Simulating route — {label} at {speed:.0f} km/h")
         logger.info(f"Route simulation started: {speed} km/h, mode={transport_mode}, traffic={simulate_stops}")
     
+    def _on_roam_radius_changed(self, lat: float, lon: float, radius: float):
+        """Draw radius circle on map"""
+        self.map_widget.draw_radius_circle(lat, lon, radius)
+
+    def _on_roam_requested(self, lat, lon, radius, duration, speed, mode):
+        if not self.location_controller:
+            QMessageBox.warning(self, "Error", "No device connected")
+            return
+
+        self.total_dist = 0.0
+        self.total_time = 0.0
+        self.gps_hud_card.setVisible(False)
+
+        self.location_controller.set_location(lat, lon)
+        self.map_widget.add_marker(lat, lon)
+        self.map_widget.draw_radius_circle(lat, lon, radius)
+
+        self.walk_thread = RoamSimulationThread(
+            self.location_controller,
+            lat, lon, radius, duration, speed, mode
+        )
+        self.walk_thread.progress_updated.connect(self._on_walk_progress)
+        self.walk_thread.route_calculated.connect(self._on_walk_route_calculated)
+        self.walk_thread.finished.connect(self._on_walk_finished)
+        self.walk_thread.error.connect(self._on_walk_error)
+        self.walk_thread.start()
+
+        self.statusBar.showMessage(f"Roaming area — {radius}m radius for {duration} mins")
+        logger.info(f"Roam simulation started: {radius}m radius, {duration} mins")
+    
     def _on_walk_route_calculated(self, total_dist: float, total_time: float):
         """Called when total route distance and duration are calculated"""
         self.total_dist = total_dist
@@ -599,6 +670,7 @@ class MainWindow(QMainWindow):
     def _on_stop(self):
         """Stop simulation"""
         self.gps_hud_card.setVisible(False)
+        self.map_widget.clear_radius_circle()
         if self.location_controller:
             self.location_controller.stop_simulation()
             if self.walk_thread and self.walk_thread.isRunning():

@@ -531,6 +531,184 @@ class LocationController:
             self._stop_location_process()
             return False
 
+    def simulate_roam(
+        self,
+        center_lat: float,
+        center_lon: float,
+        radius_m: float,
+        duration_mins: float,
+        speed_kmh: float = 5.0,
+        update_interval: float = 1.0,
+        progress_callback: Optional[Callable[[float, float, float], None]] = None,
+        transport_mode: str = 'walking',
+        route_callback: Optional[Callable[[float, float], None]] = None
+    ) -> bool:
+        """
+        Simulate Area Roaming within a circular area.
+        Generates random waypoints within radius_m and routes between them.
+        """
+        if not self.device_manager.is_connected():
+            logger.error("Device is not connected")
+            return False
+
+        self._stop_location_process()
+
+        try:
+            cap = self.SPEED_CAPS.get(transport_mode, 90.0)
+            if speed_kmh > cap:
+                logger.info(f"Speed {speed_kmh} km/h exceeds cap for '{transport_mode}' ({cap} km/h). Clamping.")
+                speed_kmh = cap
+
+            speed_ms = (speed_kmh * 1000) / 3600
+            total_time_target = duration_mins * 60.0
+
+            timed_waypoints: List[Tuple[float, float, float]] = []
+            elapsed = 0.0
+            
+            current_lat = center_lat
+            current_lon = center_lon
+            timed_waypoints.append((current_lat, current_lon, 0.0))
+            
+            import random as _rnd
+            import math as _math
+            
+            # Generate points until we reach the target duration
+            while elapsed < total_time_target:
+                bearing = _rnd.uniform(0, 360)
+                # Sqrt for uniform distribution within the circle
+                distance = radius_m * _math.sqrt(_rnd.uniform(0, 1))
+                
+                target_lat, target_lon = CoordinateUtils.calculate_destination(
+                    center_lat, center_lon, distance, bearing
+                )
+                
+                # Get route from current to target
+                route_data = self._get_road_route(current_lat, current_lon, target_lat, target_lon, transport_mode, include_steps=False)
+                
+                if route_data and route_data.get('geometry'):
+                    coords = route_data['geometry']['coordinates']
+                    road_waypoints = [(lat, lon) for lon, lat in coords]
+                    
+                    for i in range(1, len(road_waypoints)):
+                        lat, lon = road_waypoints[i]
+                        prev_lat, prev_lon = road_waypoints[i - 1]
+                        seg_dist = CoordinateUtils.calculate_distance(prev_lat, prev_lon, lat, lon)
+                        elapsed += seg_dist / speed_ms
+                        timed_waypoints.append((lat, lon, elapsed))
+                        if elapsed >= total_time_target:
+                            break
+                else:
+                    # Straight-line fallback
+                    seg_dist = CoordinateUtils.calculate_distance(current_lat, current_lon, target_lat, target_lon)
+                    elapsed += seg_dist / max(0.1, speed_ms)
+                    timed_waypoints.append((target_lat, target_lon, elapsed))
+                    
+                current_lat = target_lat
+                current_lon = target_lon
+            
+            total_time = elapsed if elapsed > 0 else 1.0
+
+            if route_callback:
+                route_callback(total_time * speed_ms, total_time)
+
+            logger.info(
+                f"Roam simulation: {len(timed_waypoints)} waypoints, "
+                f"speed={speed_kmh} km/h, mode={transport_mode}, "
+                f"est. duration={total_time:.0f}s"
+            )
+
+            densified_waypoints = self._densify_waypoints(timed_waypoints, max_gap_sec=1.0)
+            gpx_file = self._create_route_gpx_file(densified_waypoints)
+            
+            rsd_args = self._get_rsd_args()
+            if not rsd_args:
+                logger.error("Could not obtain RSD connection arguments")
+                return False
+
+            cmd = [
+                "pymobiledevice3", "developer", "dvt",
+                "simulate-location", "play"
+            ] + rsd_args + [gpx_file]
+
+            logger.debug(f"Executing command: {' '.join(cmd)}")
+
+            with self._process_lock:
+                self._location_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+            time.sleep(0.5)
+
+            if not self._location_process or self._location_process.poll() is not None:
+                logger.error("Failed to start roam playback process")
+                try:
+                    Path(gpx_file).unlink()
+                except Exception:
+                    pass
+                return False
+
+            self._is_simulating = True
+
+            # Progress tracking loop
+            movement_elapsed = 0.0
+            last_check_time = time.time()
+            last_ui_update = 0.0
+
+            while True:
+                now = time.time()
+                delta = now - last_check_time
+                last_check_time = now
+
+                if not self._is_simulating:
+                    logger.info("Roam simulation interrupted")
+                    self._stop_location_process()
+                    return False
+
+                with self._process_lock:
+                    if self._location_process is None or self._location_process.poll() is not None:
+                        logger.info("Roam GPX player process ended.")
+                        break
+
+                movement_elapsed += delta
+                if movement_elapsed >= total_time:
+                    break
+
+                progress = movement_elapsed / total_time
+
+                if movement_elapsed - last_ui_update >= 1.0:
+                    last_ui_update = movement_elapsed
+                    target_elapsed = progress * total_time
+                    current_lat, current_lon = timed_waypoints[-1][0], timed_waypoints[-1][1]
+                    for j in range(len(timed_waypoints) - 1):
+                        t0 = timed_waypoints[j][2]
+                        t1 = timed_waypoints[j + 1][2]
+                        if t0 <= target_elapsed <= t1 and t1 > t0:
+                            seg_p = (target_elapsed - t0) / (t1 - t0)
+                            current_lat = timed_waypoints[j][0] + (timed_waypoints[j + 1][0] - timed_waypoints[j][0]) * seg_p
+                            current_lon = timed_waypoints[j][1] + (timed_waypoints[j + 1][1] - timed_waypoints[j][1]) * seg_p
+                            break
+
+                    self._current_location = (current_lat, current_lon)
+
+                    if progress_callback:
+                        progress_callback(current_lat, current_lon, progress)
+
+                time.sleep(0.5)
+
+            # Update final location
+            if len(timed_waypoints) > 0:
+                self._current_location = (timed_waypoints[-1][0], timed_waypoints[-1][1])
+            logger.info("Roam simulation finished successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error during roam simulation: {e}", exc_info=True)
+            self._is_simulating = False
+            self._stop_location_process()
+            return False
+
     def is_simulating(self) -> bool:
         """Check if active location simulation is running"""
         return self._is_simulating

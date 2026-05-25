@@ -65,6 +65,7 @@
         var currentPositionMarker = null;
         var destinationMarker = null;
         var routePolyline = null;
+        var roamingCircle = null;
 
         function initMap(lat, lon, zoom) {
             if (map) { return; }  // guard against double-init
@@ -142,6 +143,26 @@
             if (!map) { return; }
             if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
             if (routePolyline) { map.removeLayer(routePolyline); routePolyline = null; }
+            if (roamingCircle) { map.removeLayer(roamingCircle); roamingCircle = null; }
+        }
+
+        function drawCircle(lat, lon, radius) {
+            if (!map) { return; }
+            if (roamingCircle) { map.removeLayer(roamingCircle); }
+            roamingCircle = L.circle([lat, lon], {
+                color: '#34c759',
+                fillColor: '#34c759',
+                fillOpacity: 0.15,
+                radius: radius,
+                weight: 2,
+                dashArray: '5, 10'
+            }).addTo(map);
+            map.fitBounds(roamingCircle.getBounds(), { padding: [50, 50] });
+        }
+
+        function clearCircle() {
+            if (!map) { return; }
+            if (roamingCircle) { map.removeLayer(roamingCircle); roamingCircle = null; }
         }
 
         function panTo(lat, lon, zoom) {

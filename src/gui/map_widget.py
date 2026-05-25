@@ -178,6 +178,14 @@ class MapWidget(QWidget):
         """Clear all route lines"""
         self.run_js("clearMap();")
 
+    def draw_radius_circle(self, latitude: float, longitude: float, radius_m: float):
+        """Draw a visual radius circle for Area Roaming"""
+        self.run_js(f"drawCircle({latitude}, {longitude}, {radius_m});")
+
+    def clear_radius_circle(self):
+        """Clear the visual radius circle"""
+        self.run_js("clearCircle();")
+
     def refresh_map(self):
         """No-op for backwards compatibility"""
         pass

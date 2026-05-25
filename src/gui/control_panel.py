@@ -26,6 +26,8 @@ class ControlPanel(QWidget):
     clear_requested = pyqtSignal()
     freeze_requested = pyqtSignal()
     joystick_step_requested = pyqtSignal(str)  # 'N', 'S', 'E', 'W'
+    roam_requested = pyqtSignal(float, float, float, float, float, str)
+    roam_radius_changed = pyqtSignal(float, float, float)
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -44,6 +46,10 @@ class ControlPanel(QWidget):
         # 2. Advanced Coordinates
         coord_group = self._create_coordinate_group()
         layout.addWidget(coord_group)
+        
+        # 3. Area Roaming
+        roam_group = self._create_roam_group()
+        layout.addWidget(roam_group)
         
         # 4. Joystick
         joystick_group = self._create_joystick_group()
@@ -148,6 +154,59 @@ class ControlPanel(QWidget):
         self.walk_btn.clicked.connect(self._on_walk_simulation)
         layout.addWidget(self.walk_btn)
         
+        group.setLayout(layout)
+        return group
+
+    def _create_roam_group(self) -> QGroupBox:
+        """Area Roaming Controls"""
+        group = QGroupBox("🏞️  Area Roaming")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 18, 10, 10)
+        layout.setSpacing(8)
+
+        # Radius slider
+        rad_layout = QHBoxLayout()
+        rad_layout.addWidget(QLabel("Radius:"))
+        self.radius_label = QLabel("500 m")
+        self.radius_label.setStyleSheet("color: #34c759; font-weight: bold;")
+        rad_layout.addWidget(self.radius_label)
+        rad_layout.addStretch()
+        layout.addLayout(rad_layout)
+
+        self.radius_slider = QSlider(Qt.Orientation.Horizontal)
+        self.radius_slider.setRange(50, 5000)
+        self.radius_slider.setValue(500)
+        self.radius_slider.valueChanged.connect(self._on_radius_changed)
+        layout.addWidget(self.radius_slider)
+
+        # Duration
+        dur_layout = QHBoxLayout()
+        dur_layout.addWidget(QLabel("Duration:"))
+        self.duration_input = QDoubleSpinBox()
+        self.duration_input.setRange(1.0, 1440.0)
+        self.duration_input.setValue(30.0)
+        self.duration_input.setSuffix(" min")
+        dur_layout.addWidget(self.duration_input)
+        layout.addLayout(dur_layout)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        self.start_roam_btn = QPushButton("🚶 Start Roaming")
+        self.start_roam_btn.clicked.connect(self._on_start_roaming)
+        btn_layout.addWidget(self.start_roam_btn)
+
+        self.stop_roam_btn = QPushButton("🔓 Stop Roaming")
+        self.stop_roam_btn.clicked.connect(self._on_stop)
+        btn_layout.addWidget(self.stop_roam_btn)
+
+        layout.addLayout(btn_layout)
+
+        # Info
+        info = QLabel("Unplug safe: Phone will keep roaming within radius autonomously.")
+        info.setWordWrap(True)
+        info.setStyleSheet("color: #94A3B8; font-size: 11px;")
+        layout.addWidget(info)
+
         group.setLayout(layout)
         return group
 
@@ -432,6 +491,22 @@ class ControlPanel(QWidget):
     def _on_freeze(self):
         self.freeze_requested.emit()
         
+    def _on_radius_changed(self, value):
+        if value >= 1000:
+            self.radius_label.setText(f"{value/1000:.1f} km")
+        else:
+            self.radius_label.setText(f"{value} m")
+        self.roam_radius_changed.emit(self.lat_input.value(), self.lon_input.value(), float(value))
+
+    def _on_start_roaming(self):
+        lat = self.lat_input.value()
+        lon = self.lon_input.value()
+        radius = float(self.radius_slider.value())
+        duration = self.duration_input.value()
+        speed = self.speed_slider.value() / 10.0
+        mode = self._get_transport_mode()
+        self.roam_requested.emit(lat, lon, radius, duration, speed, mode)
+        
     def set_coordinates(self, latitude: float, longitude: float):
         """Set start coordinates from external source (map click, etc.)"""
         self.lat_input.setValue(latitude)
@@ -475,3 +550,7 @@ class ControlPanel(QWidget):
         self.btn_left.setEnabled(enabled)
         self.btn_right.setEnabled(enabled)
         self.stops_checkbox.setEnabled(enabled)
+        self.start_roam_btn.setEnabled(enabled)
+        self.stop_roam_btn.setEnabled(enabled)
+        self.radius_slider.setEnabled(enabled)
+        self.duration_input.setEnabled(enabled)
