@@ -179,6 +179,19 @@ class ControlPanel(QWidget):
         self.radius_slider.valueChanged.connect(self._on_radius_changed)
         layout.addWidget(self.radius_slider)
 
+        # Speed
+        speed_layout = QHBoxLayout()
+        speed_layout.addWidget(QLabel("Speed:"))
+        self.roam_speed_combo = QComboBox()
+        self.roam_speed_combo.addItems([
+            "🚶 Walking (~5 km/h)",
+            "🚲 Biking (~15 km/h)",
+            "🚗 City Drive (~35 km/h)",
+            "🛣️ Car Fast (~80 km/h)"
+        ])
+        speed_layout.addWidget(self.roam_speed_combo)
+        layout.addLayout(speed_layout)
+
         # Duration
         dur_layout = QHBoxLayout()
         dur_layout.addWidget(QLabel("Duration:"))
@@ -503,8 +516,22 @@ class ControlPanel(QWidget):
         lon = self.lon_input.value()
         radius = float(self.radius_slider.value())
         duration = self.duration_input.value()
-        speed = self.speed_slider.value() / 10.0
-        mode = self._get_transport_mode()
+        
+        # Determine speed and mode from combo box
+        idx = self.roam_speed_combo.currentIndex()
+        if idx == 0:
+            speed = 5.0
+            mode = 'walking'
+        elif idx == 1:
+            speed = 15.0
+            mode = 'cycling'
+        elif idx == 2:
+            speed = 35.0
+            mode = 'driving'
+        else:
+            speed = 80.0
+            mode = 'highway'
+            
         self.roam_requested.emit(lat, lon, radius, duration, speed, mode)
         
     def set_coordinates(self, latitude: float, longitude: float):
@@ -554,3 +581,4 @@ class ControlPanel(QWidget):
         self.stop_roam_btn.setEnabled(enabled)
         self.radius_slider.setEnabled(enabled)
         self.duration_input.setEnabled(enabled)
+        self.roam_speed_combo.setEnabled(enabled)
