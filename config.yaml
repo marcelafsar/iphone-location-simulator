@@ -1,43 +1,36 @@
-# Marcel Location Simulator - Configuration
-
 app:
-  name: "Marcel Location Simulator"
-  version: "1.0.0"
-  author: "Marcel Afsar"
-  language: "en"
-  theme: "dark"
-
-location:
-  default_speed: 5.0  # km/h
-  update_interval: 1.0  # seconds
-  min_speed: 1.0
-  max_speed: 100.0
-
-map:
-  default_zoom: 15
-  default_center:
-    latitude: 40.7128
-    longitude: -74.0060  # New York City
-  tile_layer: "CartoDB"
-
+  author: Marcel Afsar
+  language: en
+  name: Marcel Location Simulator
+  theme: dark
+  version: 1.0.0
 database:
-  path: "data/favorites.db"
   backup_enabled: true
-  backup_interval: 7  # days
-
-logging:
-  level: "INFO"
-  file_path: "data/logs/app.log"
-  max_size: 10485760  # 10MB
-  backup_count: 5
-
-ui:
-  window_width: 1200
-  window_height: 850
-  remember_position: true
-  show_tooltips: true
-
+  backup_interval: 7
+  path: data/favorites.db
 features:
   auto_reconnect: true
+  is_frozen: false
   save_last_location: true
   show_notifications: true
+location:
+  default_speed: 5.0
+  max_speed: 100.0
+  min_speed: 1.0
+  update_interval: 1.0
+logging:
+  backup_count: 5
+  file_path: data/logs/app.log
+  level: INFO
+  max_size: 10485760
+map:
+  default_center:
+    latitude: 40.7128
+    longitude: -74.006
+  default_zoom: 15
+  tile_layer: CartoDB
+ui:
+  remember_position: true
+  show_tooltips: true
+  window_height: 850
+  window_width: 1200

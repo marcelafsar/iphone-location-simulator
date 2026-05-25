@@ -124,6 +124,12 @@ def _emergency_cleanup(*args):
     Kills any simulate-location play processes so the phone reverts to real GPS.
     """
     try:
+        config = ConfigManager()
+        is_frozen = config.get('features.is_frozen', False)
+    except Exception:
+        is_frozen = False
+
+    try:
         if sys.platform == "win32":
             subprocess.run(
                 ["wmic", "process", "where",
@@ -140,11 +146,12 @@ def _emergency_cleanup(*args):
     except Exception:
         pass
 
-    # Also try to clear the simulation on the device
-    try:
-        _clear_stale_simulation()
-    except Exception:
-        pass
+    # Also try to clear the simulation on the device if not frozen
+    if not is_frozen:
+        try:
+            _clear_stale_simulation()
+        except Exception:
+            pass
 
 
 def main():
@@ -154,10 +161,18 @@ def main():
     logger = setup_logger()
     logger.info("Starting Marcel Location Simulator...")
 
+    # Load configuration first
+    config = ConfigManager()
+    is_frozen = config.get('features.is_frozen', False)
+
     # --- Phase 0: Clean up leftovers from any previous crash ---
     logger.info("Checking for orphaned processes from previous session...")
     _cleanup_orphan_processes()
-    _clear_stale_simulation()
+    
+    if not is_frozen:
+        _clear_stale_simulation()
+    else:
+        logger.info("Device is marked as FROZEN. Skipping automatic startup GPS clear.")
 
     # Register safety nets so force-quit still cleans up the phone
     atexit.register(_emergency_cleanup)
@@ -165,8 +180,6 @@ def main():
     signal.signal(signal.SIGTERM, _emergency_cleanup)
     
     try:
-        # Load configuration
-        config = ConfigManager()
         logger.info(f"Config loaded: {config.get('app.name')} v{config.get('app.version')}")
         
         # Initialize Qt Application

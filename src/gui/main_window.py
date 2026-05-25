@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         self.walk_thread = None
         self.total_dist = 0.0
         self.total_time = 0.0
+        self.is_frozen = False
         
         self._init_ui()
         self._load_stylesheet()
@@ -164,6 +165,7 @@ class MainWindow(QMainWindow):
         self.control_panel.walk_simulation_requested.connect(self._on_walk_simulation)
         self.control_panel.stop_requested.connect(self._on_stop)
         self.control_panel.clear_requested.connect(self._on_clear)
+        self.control_panel.freeze_requested.connect(self._on_freeze_location)
         self.control_panel.joystick_step_requested.connect(self._on_joystick_step)
         self.map_widget.location_clicked.connect(self._on_map_clicked)
         self.map_widget.destination_clicked.connect(self._on_map_destination_clicked)
@@ -179,6 +181,17 @@ class MainWindow(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.statusBar.showMessage("Ready — Connect your iPhone to get started")
+        
+        # Load is_frozen state
+        self.is_frozen = self.config.get('features.is_frozen', False)
+        if self.is_frozen:
+            self.control_panel.set_freeze_state(is_frozen=True, can_unfreeze=False)
+            self.device_status_label.setText("❌ Phone Disconnected (Location Frozen)")
+            self.device_status_label.setStyleSheet(
+                "font-weight: 600; font-size: 12px; color: #ff3b30; border: none; background: transparent;"
+            )
+            self.connect_btn.setText("Waiting...")
+            self.connect_btn.setEnabled(False)
         
         logger.info("UI initialized (Marcel Location Simulator)")
         
@@ -249,6 +262,10 @@ class MainWindow(QMainWindow):
     def _check_device_status(self):
         """Check device connection status and update UI"""
         if self.device_manager.is_connected():
+            if not self.device_manager.check_connection_fast():
+                self._handle_device_unplugged()
+                return
+                
             device_info = self.device_manager.get_device_info()
             if device_info:
                 name = device_info.get('name', 'iPhone')
@@ -256,16 +273,23 @@ class MainWindow(QMainWindow):
                 version = device_info.get('version', '')
                 battery = device_info.get('battery_level')
                 
-                status = f"📱  {name}"
-                if model and model != name:
-                    status += f"  •  {model}"
-                if version:
-                    status += f"  •  {version}"
-                    
-                self.device_status_label.setText(status)
-                self.device_status_label.setStyleSheet(
-                    "font-weight: 600; font-size: 12px; color: #34c759; border: none; background: transparent;"
-                )
+                if getattr(self, 'is_frozen', False):
+                    status = f"❄️  {name} (Location Frozen)"
+                    self.device_status_label.setText(status)
+                    self.device_status_label.setStyleSheet(
+                        "font-weight: 600; font-size: 12px; color: #6366F1; border: none; background: transparent;"
+                    )
+                else:
+                    status = f"📱  {name}"
+                    if model and model != name:
+                        status += f"  •  {model}"
+                    if version:
+                        status += f"  •  {version}"
+                        
+                    self.device_status_label.setText(status)
+                    self.device_status_label.setStyleSheet(
+                        "font-weight: 600; font-size: 12px; color: #34c759; border: none; background: transparent;"
+                    )
                 
                 # Battery indicator
                 if battery is not None:
@@ -279,19 +303,53 @@ class MainWindow(QMainWindow):
                 else:
                     self.battery_label.hide()
         else:
-            self.device_status_label.setText("📱  No device connected")
-            self.device_status_label.setStyleSheet(
-                "font-weight: 600; font-size: 12px; color: #ff453a; border: none; background: transparent;"
-            )
-            self.battery_label.hide()
-            self.connect_btn.setText("Connect")
-            self.control_panel.set_enabled(False)
+            if getattr(self, 'is_frozen', False):
+                self.device_status_label.setText("❌ Phone Disconnected (Location Frozen)")
+                self.device_status_label.setStyleSheet(
+                    "font-weight: 600; font-size: 12px; color: #ff3b30; border: none; background: transparent;"
+                )
+                self.battery_label.hide()
+                self.connect_btn.setText("Waiting...")
+                self.connect_btn.setEnabled(False)
+                self.control_panel.set_enabled(False)
+                self.control_panel.set_freeze_state(is_frozen=True, can_unfreeze=False)
+                
+                # Try to detect if the device was plugged back in (lightweight check only)
+                try:
+                    import requests as _req
+                    resp = _req.get("http://127.0.0.1:49151/", timeout=1.0)
+                    tunnels = resp.json()
+                    if tunnels and isinstance(tunnels, dict) and len(tunnels) > 0:
+                        logger.info("Frozen device detected in tunnels. Attempting reconnect...")
+                        self.statusBar.showMessage("Frozen device detected. Reconnecting...")
+                        
+                        from PyQt6.QtWidgets import QApplication
+                        QApplication.processEvents()
+                        
+                        if self.device_manager.connect():
+                            self.location_controller = LocationController(self.device_manager)
+                            self.control_panel.set_enabled(True)
+                            self.control_panel.set_freeze_state(is_frozen=True, can_unfreeze=True)
+                            self.connect_btn.setText("Disconnect")
+                            self.connect_btn.setEnabled(True)
+                            self.statusBar.showMessage("Device reconnected. Ready to unfreeze.")
+                except Exception:
+                    pass  # silent — device not plugged in yet
+            else:
+                self.device_status_label.setText("📱  No device connected")
+                self.device_status_label.setStyleSheet(
+                    "font-weight: 600; font-size: 12px; color: #ff453a; border: none; background: transparent;"
+                )
+                self.battery_label.hide()
+                self.connect_btn.setText("Connect")
+                self.connect_btn.setEnabled(True)
+                self.control_panel.set_enabled(False)
             
     def _on_connect(self):
         """Handle connect/disconnect button"""
         if self.device_manager.is_connected():
             # Disconnect
-            if self.location_controller:
+            if self.location_controller and not getattr(self, 'is_frozen', False):
                 self.location_controller.clear_location()
             self.device_manager.disconnect()
             self.location_controller = None
@@ -558,6 +616,123 @@ class MainWindow(QMainWindow):
                 self.map_widget.clear_markers()
                 self.map_widget.clear_route_lines()
                 self.statusBar.showMessage("GPS reset to real location. Map cleared.")
+
+    def _on_freeze_location(self):
+        """Handle 'Freeze Location' / 'Unfreeze GPS' button click"""
+        if getattr(self, 'is_frozen', False):
+            self._on_unfreeze()
+            return
+            
+        if not self.location_controller or not self.device_manager.is_connected():
+            QMessageBox.warning(self, "Error", "No device connected")
+            return
+            
+        lat = self.control_panel.lat_input.value()
+        lon = self.control_panel.lon_input.value()
+        
+        self.statusBar.showMessage(f"Freezing GPS to ({lat:.6f}, {lon:.6f})...")
+        if self.location_controller.set_location(lat, lon):
+            self.is_frozen = True
+            self.config.set('features.is_frozen', True)
+            self.config.save()
+            
+            self.map_widget.set_center(lat, lon)
+            self.map_widget.add_marker(lat, lon)
+            self.control_panel.set_freeze_state(is_frozen=True, can_unfreeze=True)
+            
+            QMessageBox.information(
+                self,
+                "Location Frozen",
+                "Your location has been successfully frozen!\n\n"
+                "You can now safely unplug your USB cable. The simulated location "
+                "will stay in the same exact spot and won't move until you plug "
+                "the phone back in and click 'Unfreeze GPS', or restart your phone."
+            )
+            
+            device_info = self.device_manager.get_device_info()
+            name = device_info.get('name', 'iPhone') if device_info else 'iPhone'
+            self.device_status_label.setText(f"❄️  {name} (Location Frozen)")
+            self.device_status_label.setStyleSheet(
+                "font-weight: 600; font-size: 12px; color: #6366F1; border: none; background: transparent;"
+            )
+            self.statusBar.showMessage(f"Location frozen at ({lat:.6f}, {lon:.6f}). Safe to unplug.")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to freeze location. Check connection.")
+            
+    def _on_unfreeze(self):
+        """Unfreeze GPS and restore real location"""
+        if not self.location_controller or not self.device_manager.is_connected():
+            QMessageBox.warning(self, "Error", "No device connected. Please plug in your device first.")
+            return
+            
+        self.statusBar.showMessage("Unfreezing GPS...")
+        if self.location_controller.clear_location():
+            self.is_frozen = False
+            self.config.set('features.is_frozen', False)
+            self.config.save()
+            
+            self.map_widget.clear_markers()
+            self.map_widget.clear_route_lines()
+            self.control_panel.set_freeze_state(is_frozen=False)
+            self.control_panel.set_enabled(True)
+            self.connect_btn.setText("Disconnect")
+            self.connect_btn.setEnabled(True)
+            
+            QMessageBox.information(
+                self,
+                "GPS Unfrozen",
+                "Your location has been successfully unfrozen.\n"
+                "Real GPS coordinates are now restored."
+            )
+            
+            device_info = self.device_manager.get_device_info()
+            if device_info:
+                name = device_info.get('name', 'iPhone')
+                model = device_info.get('model', '')
+                version = device_info.get('version', '')
+                status = f"📱  {name}"
+                if model and model != name:
+                    status += f"  •  {model}"
+                if version:
+                    status += f"  •  {version}"
+                self.device_status_label.setText(status)
+                self.device_status_label.setStyleSheet(
+                    "font-weight: 600; font-size: 12px; color: #34c759; border: none; background: transparent;"
+                )
+            self.statusBar.showMessage("GPS unfrozen. Real location restored.")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to unfreeze GPS.")
+            
+    def _handle_device_unplugged(self):
+        """Clean up state on host when device is physically disconnected"""
+        logger.warning("Device unplugged. Cleaning up session...")
+        
+        if self.location_controller:
+            self.location_controller.stop_simulation()
+            
+        self.device_manager.disconnect()
+        self.location_controller = None
+        self.battery_label.hide()
+        
+        if getattr(self, 'is_frozen', False):
+            self.device_status_label.setText("❌ Phone Disconnected (Location Frozen)")
+            self.device_status_label.setStyleSheet(
+                "font-weight: 600; font-size: 12px; color: #ff3b30; border: none; background: transparent;"
+            )
+            self.control_panel.set_enabled(False)
+            self.control_panel.set_freeze_state(is_frozen=True, can_unfreeze=False)
+            self.connect_btn.setText("Waiting...")
+            self.connect_btn.setEnabled(False)
+            self.statusBar.showMessage("Phone unplugged. Simulated location is frozen on the device.")
+        else:
+            self.device_status_label.setText("📱  No device connected")
+            self.device_status_label.setStyleSheet(
+                "font-weight: 600; font-size: 12px; color: #ff453a; border: none; background: transparent;"
+            )
+            self.control_panel.set_enabled(False)
+            self.connect_btn.setText("Connect")
+            self.connect_btn.setEnabled(True)
+            self.statusBar.showMessage("Phone disconnected.")
                 
     def keyPressEvent(self, event):
         """Hook WASD and arrow keys for joystick control"""
@@ -615,7 +790,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """Clean up on window close"""
         if self.device_manager.is_connected():
-            if self.location_controller:
+            if self.location_controller and not getattr(self, 'is_frozen', False):
                 self.location_controller.clear_location()
             self.device_manager.disconnect()
         event.accept()

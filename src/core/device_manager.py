@@ -379,6 +379,25 @@ class DeviceManager:
             self._is_connected = False
             return self.connect()
 
+    def check_connection_fast(self) -> bool:
+        """
+        Verify if the device is still connected by querying active tunnels.
+        This is a lightweight, non-blocking check (no subprocess calls).
+        """
+        if not self._is_connected or not self._device_info:
+            return False
+        try:
+            r = requests.get(f"{self.TUNNELD_URL}/", timeout=1.0)
+            r.raise_for_status()
+            data = r.json()
+            if not isinstance(data, dict):
+                return False
+            udid = self._device_info.get("udid")
+            return udid in data
+        except Exception:
+            return False
+
+
     def __enter__(self):
         """Context manager entry"""
         self.connect()

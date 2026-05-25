@@ -105,7 +105,6 @@ QPushButton {
     color: #ffffff;
     font-weight: 600;
     font-size: 13px;
-    transition: background-color 0.2s ease;
 }
 
 QPushButton:hover {
@@ -135,6 +134,10 @@ QPushButton#walk_btn:hover { background-color: #34D399; }
 
 QPushButton#teleport_btn { background-color: rgba(139, 92, 246, 0.9); }
 QPushButton#teleport_btn:hover { background-color: #A78BFA; }
+
+QPushButton#freeze_btn { background-color: rgba(99, 102, 241, 0.9); }
+QPushButton#freeze_btn:hover { background-color: #818CF8; }
+
 
 QPushButton#toggle_menu_btn {
     background-color: rgba(30, 41, 59, 0.9);

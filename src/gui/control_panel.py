@@ -24,6 +24,7 @@ class ControlPanel(QWidget):
     walk_simulation_requested = pyqtSignal(float, float, float, float, float, float, bool, str)
     stop_requested = pyqtSignal()
     clear_requested = pyqtSignal()
+    freeze_requested = pyqtSignal()
     joystick_step_requested = pyqtSignal(str)  # 'N', 'S', 'E', 'W'
     
     def __init__(self, parent=None):
@@ -263,18 +264,44 @@ class ControlPanel(QWidget):
     def _create_control_buttons_group(self) -> QGroupBox:
         """Stop and reset controls"""
         group = QGroupBox("⚙️  Controls")
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 22, 10, 10)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 18, 10, 10)
+        layout.setSpacing(8)
         
+        # Row 1: Stop and Reset GPS
+        row1 = QHBoxLayout()
+        row1.setSpacing(6)
         self.stop_btn = QPushButton("⏹  Stop")
         self.stop_btn.setObjectName("stop_btn")
         self.stop_btn.clicked.connect(self._on_stop)
-        layout.addWidget(self.stop_btn)
+        row1.addWidget(self.stop_btn)
         
         self.clear_btn = QPushButton("↩  Reset GPS")
         self.clear_btn.setObjectName("clear_btn")
         self.clear_btn.clicked.connect(self._on_clear)
-        layout.addWidget(self.clear_btn)
+        row1.addWidget(self.clear_btn)
+        layout.addLayout(row1)
+        
+        # Row 2: Freeze Location Button
+        self.freeze_btn = QPushButton("❄️ Freeze Location")
+        self.freeze_btn.setObjectName("freeze_btn")
+        self.freeze_btn.clicked.connect(self._on_freeze)
+        layout.addWidget(self.freeze_btn)
+        
+        # Row 3: Info note
+        info_layout = QHBoxLayout()
+        info_layout.setSpacing(6)
+        
+        self.info_icon = QLabel("ⓘ")
+        self.info_icon.setStyleSheet("color: #6366F1; font-size: 14px; font-weight: bold; min-width: 12px;")
+        info_layout.addWidget(self.info_icon)
+        
+        self.info_note = QLabel("Location will stay in the same exact spot and won't move until unfrozen or phone restarted")
+        self.info_note.setWordWrap(True)
+        self.info_note.setStyleSheet("color: #94A3B8; font-size: 11px; line-height: 14px;")
+        info_layout.addWidget(self.info_note)
+        
+        layout.addLayout(info_layout)
         
         group.setLayout(layout)
         return group
@@ -402,6 +429,9 @@ class ControlPanel(QWidget):
     def _on_clear(self):
         self.clear_requested.emit()
         
+    def _on_freeze(self):
+        self.freeze_requested.emit()
+        
     def set_coordinates(self, latitude: float, longitude: float):
         """Set start coordinates from external source (map click, etc.)"""
         self.lat_input.setValue(latitude)
@@ -412,12 +442,31 @@ class ControlPanel(QWidget):
         self.end_lat_input.setValue(latitude)
         self.end_lon_input.setValue(longitude)
 
+    def set_freeze_state(self, is_frozen: bool, can_unfreeze: bool = False):
+        """
+        Update the freeze button text, stylesheet and enabled state based on application state.
+        """
+        if is_frozen:
+            if can_unfreeze:
+                self.freeze_btn.setText("🔓 Unfreeze GPS")
+                self.freeze_btn.setEnabled(True)
+                self.freeze_btn.setStyleSheet("background-color: rgba(16, 185, 129, 0.9);")
+            else:
+                self.freeze_btn.setText("❄️ Location Frozen")
+                self.freeze_btn.setEnabled(False)
+                self.freeze_btn.setStyleSheet("background-color: rgba(99, 102, 241, 0.5);")
+        else:
+            self.freeze_btn.setText("❄️ Freeze Location")
+            self.freeze_btn.setEnabled(True)
+            self.freeze_btn.setStyleSheet("")
+
     def set_enabled(self, enabled: bool):
         """Enable/disable all controls"""
         self.set_location_btn.setEnabled(enabled)
         self.walk_btn.setEnabled(enabled)
         self.stop_btn.setEnabled(enabled)
         self.clear_btn.setEnabled(enabled)
+        self.freeze_btn.setEnabled(enabled)
         self.search_btn.setEnabled(enabled)
         self.dest_search_btn.setEnabled(enabled)
         self.copy_loc_btn.setEnabled(enabled)
